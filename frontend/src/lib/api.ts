@@ -76,7 +76,7 @@ async function request<T>(
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
-  } catch (networkErr) {
+  } catch {
     throw new ApiError({
       status: 0,
       error: 'network_error',
