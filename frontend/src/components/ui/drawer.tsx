@@ -1,54 +1,94 @@
-"use client";
+'use client';
 
-import { ReactNode, useState } from "react";
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import { X } from 'lucide-react';
 
 export interface DrawerProps {
   open: boolean;
   onClose: () => void;
-  children: ReactNode;
-  title?: string;
+  title: React.ReactNode;
+  badge?: React.ReactNode;
+  footer?: React.ReactNode;
+  children: React.ReactNode;
 }
 
-export const Drawer = ({
-  open,
-  onClose,
-  children,
-  title,
-}: DrawerProps) => {
-  const [mounted, setMounted] = useState(false);
-
+export function Drawer({ open, onClose, title, badge, footer, children }: DrawerProps) {
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [open, onClose]);
 
-  if (!open || !mounted) return null;
+  if (!open || typeof document === 'undefined') return null;
 
-  return (
-    <div className="drawer-scrim" onClick={onClose} aria-label="Overlay click to close">
+  return createPortal(
+    <div className="fixed inset-0 z-[99998] flex justify-end no-print" role="dialog" aria-modal="true">
       <div
-        className="drawer-shell"
-        role="dialog"
-        aria-modal="true"
-        aria-label={title || "Drawer"}
-      >
-        {title && (
-          <div className="mb-6 pb-6 border-b border-[var(--border-faint)]">
-            <h3 className="heading-section text-[var(--text-primary)] mb-2">{title}</h3>
+        className="fixed inset-0 bg-[var(--bg-scrim)] backdrop-blur-[4px] animate-fade-in"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+      <div className="relative z-[99999] w-full sm:w-[560px] max-w-full h-full bg-[var(--bg-card)] shadow-[var(--shadow-drawer)] flex flex-col overflow-hidden animate-slide-in-right">
+        <div className="px-[32px] py-[24px] border-b border-[var(--border-faint)] flex items-center justify-between gap-4 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-[var(--text-primary)] truncate">
+              {title}
+            </h2>
+            {badge}
           </div>
-        )}
-        <div className="flex-1">
-          {children}
-        </div>
-        <div className="mt-6 pt-6 border-t border-[var(--border-faint)] flex justify-end">
           <button
-            className="pill-btn pill-btn--outline"
+            type="button"
             onClick={onClose}
             aria-label="Close drawer"
+            className="w-9 h-9 rounded-full inline-flex items-center justify-center text-[var(--text-secondary)] hover:bg-[var(--bg-surface)] hover:text-[var(--text-primary)] transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9FE870]"
           >
-            Close
+            <X className="w-5 h-5" />
           </button>
         </div>
+
+        <div className="flex-1 overflow-y-auto divide-y divide-[var(--border-faint)]">
+          {children}
+        </div>
+
+        {footer && (
+          <div className="px-[32px] py-[20px] border-t border-[var(--border-faint)] bg-[var(--bg-card)] flex flex-wrap items-center justify-end gap-2.5 shrink-0">
+            {footer}
+          </div>
+        )}
       </div>
+    </div>,
+    document.body
+  );
+}
+
+export function DrawerSection({
+  title,
+  children,
+  className = '',
+}: {
+  title?: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`px-[32px] py-[24px] bg-[var(--bg-card)] ${className}`}>
+      {title && (
+        <h3 className="text-[11px] font-semibold uppercase tracking-[0.05em] text-[var(--text-muted)] mb-3">
+          {title}
+        </h3>
+      )}
+      {children}
     </div>
   );
-};
+}

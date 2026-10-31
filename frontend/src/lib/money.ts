@@ -1,60 +1,131 @@
+const inrFormatter = new Intl.NumberFormat('en-IN', {
+  style: 'currency',
+  currency: 'INR',
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 /**
- * Money formatting and calculations
- * All money stored as minor units (paise/INR cents) to avoid float issues
+ * Formats integer minor units (paise) into INR currency string (e.g., 390344 -> "₹3,903.44").
+ * Never uses floating-point arithmetic for calculations; only divides by 100 at display time.
  */
-
-export type Money = {
-  minor: number;  // in minor units (e.g., paise for INR)
-  major: number;  // in main units (e.g., rupees for INR)
-  currency: string;
-};
-
-/** Convert minor units to formatted string */
-export function formatMoney(minor: number, currency: string = "INR"): string {
-  if (minor === 0 || minor === null || minor === undefined) {
-    return "0.00";
+export function formatMinor(minor: number | null | undefined): string {
+  if (minor === null || minor === undefined || Number.isNaN(minor)) {
+    return inrFormatter.format(0);
   }
-  const major = minor / 100;
-  return new Intl.NumberFormat("en-IN", { style: "currency", currency }).format(major);
+  const integerMinor = Math.trunc(minor);
+  return inrFormatter.format(integerMinor / 100);
 }
 
-/** Parse a money string like "₹1,234.56" or "$12.34" back to minor units */
-export function parseMoney(value: string): { minor: number; major: number; currency: string } | null {
-  if (!value) return null;
-  
-  // Remove currency symbol and format
-  const clean = value.replace(/[₹$£€]/g "").replace(/,/g, "").trim();
-  const num = parseFloat(clean);
-  
-  if (isNaN(num)) return null;
-  
+/**
+ * Converts a user-entered rupee string (e.g. "1062.50" or "500") into integer paise (106250 or 50000)
+ * using string splitting to avoid IEEE-754 floating-point precision errors.
+ * Returns null if the string is not a valid non-negative decimal with at most 2 decimal places.
+ */
+export function parseRupeesToMinor(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(trimmed);
+  if (!match) return null;
+  const rupees = parseInt(match[1], 10);
+  const paiseRaw = match[2] || '';
+  const paisePadded = (paiseRaw + '00').slice(0, 2);
+  const paise = parseInt(paisePadded, 10);
+  return rupees * 100 + paise;
+}
+
+/**
+ * Converts minor units (paise) to a plain rupee input string (e.g., 150000 -> "1500.00" or "1500").
+ */
+export function minorToRupeeInput(minor: number | null | undefined): string {
+  if (minor === null || minor === undefined || Number.isNaN(minor)) return '';
+  const intMinor = Math.trunc(minor);
+  const whole = Math.trunc(intMinor / 100);
+  const rem = Math.abs(intMinor % 100);
+  if (rem === 0) return String(whole);
+  return `${whole}.${String(rem).padStart(2, '0')}`;
+}
+
+/**
+ * Formats basis points (1800 = 18%) to a human-readable percentage string ("18%" or "18.5%").
+ */
+export function formatBpToPercent(rateBp: number | null | undefined): string {
+  if (rateBp === null || rateBp === undefined || Number.isNaN(rateBp)) return '0%';
+  const intBp = Math.trunc(rateBp);
+  const whole = Math.trunc(intBp / 100);
+  const rem = Math.abs(intBp % 100);
+  if (rem === 0) return `${whole}%`;
+  const dec = String(rem).padStart(2, '0').replace(/0+$/, '');
+  return `${whole}.${dec}%`;
+}
+
+/**
+ * Parses a percentage string (e.g. "18" or "18.25") into integer basis points (1800 or 1825).
+ */
+export function parsePercentToBp(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(trimmed);
+  if (!match) return null;
+  const whole = parseInt(match[1], 10);
+  const fracRaw = match[2] || '';
+  const fracPadded = (fracRaw + '00').slice(0, 2);
+  const frac = parseInt(fracPadded, 10);
+  return whole * 100 + frac;
+}
+
+export function bpToPercentInput(rateBp: number | null | undefined): string {
+  if (rateBp === null || rateBp === undefined || Number.isNaN(rateBp)) return '';
+  const intBp = Math.trunc(rateBp);
+  const whole = Math.trunc(intBp / 100);
+  const rem = Math.abs(intBp % 100);
+  if (rem === 0) return String(whole);
+  const dec = String(rem).padStart(2, '0').replace(/0+$/, '');
+  return `${whole}.${dec}`;
+}
+
+export interface PasswordRuleResult {
+  minLength: boolean;
+  hasUpper: boolean;
+  hasLower: boolean;
+  hasSpecial: boolean;
+  isValid: boolean;
+}
+
+/**
+ * Mirrors the server password rule:
+ * more than 8 characters (>= 9), one uppercase, one lowercase, one special character.
+ */
+export function checkPasswordRules(password: string): PasswordRuleResult {
+  const minLength = password.length > 8;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasSpecial = /[^A-Za-z0-9]/.test(password);
   return {
-    minor: Math.round(num * 100),
-    major: num,
-    currency: "INR",
+    minLength,
+    hasUpper,
+    hasLower,
+    hasSpecial,
+    isValid: minLength && hasUpper && hasLower && hasSpecial,
   };
 }
 
-/** Add two money amounts (in minor units) */
-export function addMoney(a: Money, b: Money): Money {
-  return {
-    minor: a.minor + b.minor,
-    major: (a.minor + b.minor) / 100,
-    currency: a.currency,
-  };
+export function todayIsoDate(): string {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 }
 
-/** Subtract two money amounts (in minor units) */
-export function subtractMoney(a: Money, b: Money): Money {
+export function currentMonthRange(): { from: string; to: string } {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  const m = String(month + 1).padStart(2, '0');
   return {
-    minor: a.minor - b.minor,
-    major: (a.minor - b.minor) / 100,
-    currency: a.currency,
+    from: `${year}-${m}-01`,
+    to: `${year}-${m}-${String(lastDay).padStart(2, '0')}`,
   };
-}
-
-/** Multiply money by a decimal factor (e.g., tax rate) */
-export function multiplyMoney(minor: number, factor: number): number {
-  // round_half_up: add 0.5 before dividing for positive numbers
-  return Math.round((minor * factor + 0.5) / 100);
 }

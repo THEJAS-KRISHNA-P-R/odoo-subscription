@@ -1,23 +1,27 @@
-"use client";
+'use client';
 
-import { ReactNode } from "react";
+import React from 'react';
 
 export interface SkeletonProps {
-  className?: string;
   rows?: number;
+  heightClass?: string;
+  className?: string;
 }
 
-export const Skeleton = ({
-  className,
-  rows = 3,
-}: SkeletonProps) => {
-  const baseClass = "animate-bounce rounded-bg-surface min-h-8 block";
-
+export function Skeleton({ rows = 4, heightClass = 'h-[60px]', className = '' }: SkeletonProps) {
   return (
-    <div className={`space-y-2 ${baseClass} ${className}`}>
-      {Array.from({ length: rows }, () => (
-        <div className="h-6 rounded w-full animate-pulse" />
+    <div
+      className={`space-y-2 ${className}`}
+      role="status"
+      aria-live="polite"
+      aria-label="Loading content"
+    >
+      {Array.from({ length: rows }).map((_, i) => (
+        <div
+          key={i}
+          className={`w-full ${heightClass} rounded-[16px] bg-[var(--bg-surface)] animate-pulse`}
+        />
       ))}
     </div>
   );
-};
+}
