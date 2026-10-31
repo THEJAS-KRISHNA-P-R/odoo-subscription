@@ -16,7 +16,7 @@ func Open(dsn string) (*sql.DB, error) {
 		dsn = os.Getenv("DATABASE_URL")
 	}
 	if dsn == "" {
-		dsn = "postgres://postgres:postgres@localhost:5433/brightloop?sslmode=disable"
+		dsn = "postgres://postgres:postgres@localhost:5432/brightloop?sslmode=disable"
 	}
 
 	db, err := sql.Open("pgx", dsn)
@@ -65,4 +65,3 @@ func WithTx(ctx context.Context, db *sql.DB, fn func(tx *sql.Tx) error) (err err
 	}
 	return nil
 }
-

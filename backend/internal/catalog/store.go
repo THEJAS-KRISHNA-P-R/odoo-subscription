@@ -3,6 +3,7 @@ package catalog
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 )
 
@@ -135,6 +136,16 @@ func (s *Store) UpdatePaymentTerm(ctx context.Context, id int64, name string, du
 
 // Products
 func (s *Store) ListProducts(ctx context.Context, typ string, isActive *bool, cursor int64, limit int) ([]Product, error) {
+	if limit <= 0 {
+		limit = 25
+	}
+	if limit > 100 {
+		limit = 100
+	}
+	if cursor < 0 {
+		return nil, fmt.Errorf("cursor must not be negative")
+	}
+
 	query := `
 		SELECT p.id, p.name, p.type, p.sales_price_minor, p.cost_price_minor,
 		       p.tax_id, t.name, t.rate_bp, COALESCE(p.notes, ''), p.is_active, p.created_at
@@ -177,39 +188,47 @@ func (s *Store) ListProducts(ctx context.Context, typ string, isActive *bool, cu
 		}
 		products = append(products, p)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
 
-	// Fetch variants for these products
 	if len(products) > 0 {
-		var ids []any
+		ids := make([]int64, 0, len(products))
 		for _, p := range products {
 			ids = append(ids, p.ID)
 		}
-		// Fetch variants
 		vRows, err := s.db.QueryContext(ctx,
 			`SELECT id, product_id, attribute, value, extra_price_minor
 			 FROM product_variants
+			 WHERE product_id = ANY($1)
 			 ORDER BY id ASC`,
+			ids,
 		)
-		if err == nil {
-			defer vRows.Close()
-			vMap := make(map[int64][]Variant)
-			for vRows.Next() {
-				var v Variant
-				if err := vRows.Scan(&v.ID, &v.ProductID, &v.Attribute, &v.Value, &v.ExtraPriceMinor); err == nil {
-					vMap[v.ProductID] = append(vMap[v.ProductID], v)
-				}
+		if err != nil {
+			return nil, err
+		}
+		defer vRows.Close()
+		vMap := make(map[int64][]Variant)
+		for vRows.Next() {
+			var v Variant
+			if err := vRows.Scan(&v.ID, &v.ProductID, &v.Attribute, &v.Value, &v.ExtraPriceMinor); err != nil {
+				return nil, err
 			}
-			for i := range products {
-				if vars, ok := vMap[products[i].ID]; ok {
-					products[i].Variants = vars
-				} else {
-					products[i].Variants = []Variant{}
-				}
+			vMap[v.ProductID] = append(vMap[v.ProductID], v)
+		}
+		if err := vRows.Err(); err != nil {
+			return nil, err
+		}
+		for i := range products {
+			if vars, ok := vMap[products[i].ID]; ok {
+				products[i].Variants = vars
+			} else {
+				products[i].Variants = []Variant{}
 			}
 		}
 	}
 
-	return products, rows.Err()
+	return products, nil
 }
 
 func (s *Store) GetProduct(ctx context.Context, id int64) (*Product, error) {
@@ -248,16 +267,20 @@ func (s *Store) GetProduct(ctx context.Context, id int64) (*Product, error) {
 		id,
 	)
 	p.Variants = []Variant{}
-	if err == nil {
-		defer vRows.Close()
-		for vRows.Next() {
-			var v Variant
-			if err := vRows.Scan(&v.ID, &v.ProductID, &v.Attribute, &v.Value, &v.ExtraPriceMinor); err == nil {
-				p.Variants = append(p.Variants, v)
-			}
-		}
+	if err != nil {
+		return nil, err
 	}
-
+	defer vRows.Close()
+	for vRows.Next() {
+		var v Variant
+		if err := vRows.Scan(&v.ID, &v.ProductID, &v.Attribute, &v.Value, &v.ExtraPriceMinor); err != nil {
+			return nil, err
+		}
+		p.Variants = append(p.Variants, v)
+	}
+	if err := vRows.Err(); err != nil {
+		return nil, err
+	}
 	return &p, nil
 }
 
@@ -341,8 +364,41 @@ func (s *Store) UpdateVariant(ctx context.Context, id int64, value string, extra
 	return err
 }
 
+func (s *Store) UpdateVariantForProduct(ctx context.Context, productID, id int64, value string, extraPrice *int64) error {
+	result, err := s.db.ExecContext(ctx,
+		`UPDATE product_variants
+		 SET value = COALESCE(NULLIF($1, ''), value),
+		     extra_price_minor = COALESCE($2, extra_price_minor)
+		 WHERE id = $3 AND product_id = $4`,
+		value, extraPrice, id, productID,
+	)
+	if err != nil {
+		return err
+	}
+	if count, err := result.RowsAffected(); err != nil {
+		return err
+	} else if count == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}
+
 func (s *Store) DeleteVariant(ctx context.Context, id int64) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM product_variants WHERE id = $1`, id)
 	return err
 }
 
+func (s *Store) DeleteVariantForProduct(ctx context.Context, productID, id int64) error {
+	result, err := s.db.ExecContext(ctx,
+		`DELETE FROM product_variants WHERE id = $1 AND product_id = $2`, id, productID,
+	)
+	if err != nil {
+		return err
+	}
+	if count, err := result.RowsAffected(); err != nil {
+		return err
+	} else if count == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}

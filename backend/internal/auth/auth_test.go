@@ -16,7 +16,7 @@ import (
 func setupTestDB(t *testing.T) *Store {
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
-		dsn = "postgres://postgres:postgres@localhost:5433/brightloop?sslmode=disable"
+		dsn = "postgres://postgres:postgres@localhost:5432/brightloop?sslmode=disable"
 	}
 	database, err := db.Open(dsn)
 	if err != nil {
