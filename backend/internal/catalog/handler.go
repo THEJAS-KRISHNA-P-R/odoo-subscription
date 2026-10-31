@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"brightloop/backend/internal/httpx"
+	"brightloop/internal/httpx"
 )
 
 // Store holds the database operations for catalog

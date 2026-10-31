@@ -6,7 +6,7 @@ import (
 	"math"
 	"strconv"
 
-	"brightloop/backend/internal/httpx"
+	"brightloop/internal/httpx"
 )
 
 type Store struct {

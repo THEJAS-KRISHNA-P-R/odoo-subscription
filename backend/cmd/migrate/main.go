@@ -27,3 +27,4 @@ func main() {
 
 	log.Println("Migration completed.")
 }
+

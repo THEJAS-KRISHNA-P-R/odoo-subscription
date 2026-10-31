@@ -21,3 +21,4 @@ func Run(ctx context.Context, db *sql.DB) error {
 	log.Println("Schema migration 001_init.sql applied successfully.")
 	return nil
 }
+
