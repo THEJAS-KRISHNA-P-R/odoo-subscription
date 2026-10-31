@@ -23,7 +23,7 @@ export function parseMoney(value: string): { minor: number; major: number; curre
   if (!value) return null;
   
   // Remove currency symbol and format
-  const clean = value.replace(/[₹$£€]/g "").replace(/,/g, "").trim();
+  const clean = value.replace(/[₹$£€]/g, "").replace(/,/g, "").trim();
   const num = parseFloat(clean);
   
   if (isNaN(num)) return null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 
 export interface DrawerProps {
   open: boolean;
@@ -15,13 +15,7 @@ export const Drawer = ({
   children,
   title,
 }: DrawerProps) => {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!open || !mounted) return null;
+  if (!open) return null;
 
   return (
     <div className="drawer-scrim" onClick={onClose} aria-label="Overlay click to close">

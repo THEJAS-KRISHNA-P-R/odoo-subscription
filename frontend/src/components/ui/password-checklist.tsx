@@ -1,21 +1,16 @@
 "use client";
 
-import { ReactNode } from "react";
-
 export interface PasswordChecklistProps {
   password: string;
-  onChange: (password: string) => void;
   className?: string;
 }
 
 export const PasswordChecklist = ({
   password,
-  onChange,
   className,
 }: PasswordChecklistProps) => {
   const hasUpper = /[A-Z]/.test(password);
   const hasLower = /[a-z]/.test(password);
-  const hasNumber = /[0-9]/.test(password);
   const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
   const minLength = password.length >= 9;
 

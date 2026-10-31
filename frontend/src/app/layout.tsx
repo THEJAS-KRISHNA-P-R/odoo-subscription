@@ -1,9 +1,4 @@
 import "./globals.css";
-import { Inter } from "next/font/inter";
-
-const inter = Inter({
-  subsets: ["latin"],
-});
 
 export const metadata = {
   title: "Brightloop Subscription Management",
@@ -16,8 +11,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={inter.className}>
-      <body className="min-h-screen bg-app text-primary">
+    <html lang="en">
+      <body className="min-h-screen bg-white text-gray-900">
         <header className="top-bar">
           <div className="breadcrumbs">
             <span>Home / Overview</span>

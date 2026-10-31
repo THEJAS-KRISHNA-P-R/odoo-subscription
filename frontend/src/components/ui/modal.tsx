@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 
 export interface ModalProps {
   open: boolean;
@@ -17,16 +17,13 @@ export const Modal = ({
   title,
   width = "standard",
 }: ModalProps) => {
-  const [mounted] = useState(false);
+  if (!open) return null;
 
-  // Width classes based on modal type
   const widthClass = {
     standard: "max-w-sm",
     forms: "max-w-full",
     data: "max-w-2xl",
   }[width];
-
-  if (!open) return null;
 
   return (
     <div className="modal-backdrop" onClick={onClose} aria-label="Modal">
@@ -35,26 +32,25 @@ export const Modal = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
+        onClick={(event) => event.stopPropagation()}
       >
-        <h2 id="modal-title className="text-[var(--text-primary)] text-2xl font-bold mb-6">
-          {title}
-        </h2>
-        <div className="flex-1">{children}</div>
-        <div className="mt-6 pt-6 border-t border-[var(--border-faint)] flex justify-end gap-3">
+        <div className="flex items-start justify-between gap-4 mb-6">
+          <h2
+            id="modal-title"
+            className="text-[var(--text-primary)] text-2xl font-bold"
+          >
+            {title}
+          </h2>
           <button
-            className="pill-btn pill-btn--outline flex items-center gap-2"
+            className="pill-btn pill-btn--outline"
             onClick={onClose}
-            aria-label="Cancel"
-          >
-            Cancel
-          </button>
-          <button
-            className="pill-btn pill-btn--primary flex items-center gap-2"
             type="button"
+            aria-label="Close modal"
           >
-            Confirm
+            Close
           </button>
         </div>
+        <div className="flex-1">{children}</div>
       </div>
     </div>
   );

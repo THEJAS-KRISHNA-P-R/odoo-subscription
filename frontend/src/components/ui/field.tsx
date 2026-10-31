@@ -1,25 +1,25 @@
 "use client";
 
-import { ReactNode } from "react";
-
 export interface FieldProps {
   label: string;
-  children: ReactNode;
   type?: string;
   placeholder?: string;
   error?: string;
   disabled?: boolean;
   className?: string;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export const Field = ({
   label,
-  children,
   type = "text",
   placeholder,
   error,
   disabled = false,
   className,
+  value,
+  onChange,
 }: FieldProps) => {
   return (
     <div className="space-y-1.5">
@@ -30,6 +30,8 @@ export const Field = ({
           type={type}
           placeholder={placeholder}
           disabled={disabled}
+          value={value ?? ""}
+          onChange={onChange}
         />
       </div>
       {error && (

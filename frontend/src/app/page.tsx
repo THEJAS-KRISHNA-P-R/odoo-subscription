@@ -14,7 +14,7 @@ export default function HomePage() {
         <div className="bento-account-card">
           <span className="bento-account-card__label">Active Subscriptions</span>
           <span className="bento-account-card__amount">5,243</span>
-          <button className="pill-btn pill-btn--soft" style="align-self: flex-start;">
+          <button className="pill-btn pill-btn--soft">
             <span>View Details</span>
             <span className="material-symbols-outlined">expand_more</span>
           </button>

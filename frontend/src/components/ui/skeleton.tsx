@@ -1,22 +1,18 @@
 "use client";
 
-import { ReactNode } from "react";
-
 export interface SkeletonProps {
   className?: string;
   rows?: number;
 }
 
-export const Skeleton = ({
-  className,
-  rows = 3,
-}: SkeletonProps) => {
-  const baseClass = "animate-bounce rounded-bg-surface min-h-8 block";
-
+export const Skeleton = ({ className, rows = 3 }: SkeletonProps) => {
   return (
-    <div className={`space-y-2 ${baseClass} ${className}`}>
-      {Array.from({ length: rows }, () => (
-        <div className="h-6 rounded w-full animate-pulse" />
+    <div className={`space-y-2 min-h-8 ${className ?? ""}`}>
+      {Array.from({ length: rows }, (_, index) => (
+        <div
+          key={index}
+          className="h-6 rounded w-full animate-pulse bg-[var(--bg-surface)]"
+        />
       ))}
     </div>
   );

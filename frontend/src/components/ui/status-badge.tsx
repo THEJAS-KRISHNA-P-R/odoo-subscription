@@ -1,7 +1,5 @@
 "use client";
 
-import { ReactNode } from "react";
-
 export interface StatusBadgeProps {
   status:
     | "draft"
@@ -36,18 +34,19 @@ export const StatusBadge = ({
   const fontSize = size === "sm" ? "0.65rem" : "0.75rem";
   const padding = size === "sm" ? "3px 6px" : "4px 8px";
 
+  const style: React.CSSProperties = {
+    backgroundColor: colors.bg,
+    padding: padding,
+    fontSize: fontSize,
+  };
+
   return (
     <span
-      className={`inline-flex items-center rounded-full px-${padding
-        .split(" ")[1]
-        } py-${padding
-        .split(" ")[0]} text-[${fontSize}] font-medium ${colors.bg === "#E2E8F0"
-        ? "text-[var(--text-secondary)]"
-        : `text-[${colors.fg}]`}
-        style="background-color: ${colors.bg}"
-        aria-label={status}
-      >
-        {status}
-      </span>
+      className={`inline-flex items-center rounded-full ${className ?? ""}`}
+      style={style}
+      aria-label={status}
+    >
+      {status}
+    </span>
   );
 };
