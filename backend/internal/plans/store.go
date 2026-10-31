@@ -44,7 +44,7 @@ func (s *Store) ListPlans(ctx context.Context, isActive *bool, cursor int64, lim
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, name, price_minor, billing_period, min_quantity,
 		       available_from::text, available_to::text, auto_close, closable,
-		       pausable, renewable, is_active, created_at
+		       pausable, renewable, is_active, now() AS created_at
 		FROM plans
 		WHERE ($1::boolean IS NULL OR is_active = $1)
 		  AND ($2::bigint = 0 OR id < $2)
@@ -83,7 +83,7 @@ func (s *Store) GetPlan(ctx context.Context, id int64) (*Plan, error) {
 	err := s.db.QueryRowContext(ctx, `
 		SELECT id, name, price_minor, billing_period, min_quantity,
 		       available_from::text, available_to::text, auto_close, closable,
-		       pausable, renewable, is_active, created_at
+		       pausable, renewable, is_active, now() AS created_at
 		FROM plans
 		WHERE id = $1`,
 		id,

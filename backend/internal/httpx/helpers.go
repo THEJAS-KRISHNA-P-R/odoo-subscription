@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/mail"
 	"os"
 	"strconv"
 	"strings"
@@ -397,6 +398,15 @@ func NewKeysetList[T any](items []T, limit int, getID func(item T) int64) Keyset
 		Items:      items,
 		NextCursor: nil,
 	}
+}
+
+// ValidEmail reports whether value is a single plain email address.
+func ValidEmail(value string) bool {
+	if value == "" || len(value) > 254 || strings.ContainsAny(value, "\r\n") {
+		return false
+	}
+	parsed, err := mail.ParseAddress(value)
+	return err == nil && parsed.Address == value
 }
 
 // CORS wraps an http.Handler with standard CORS headers.

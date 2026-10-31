@@ -13,9 +13,16 @@ import (
 
 	"brightloop/internal/auth"
 	"brightloop/internal/catalog"
+	"brightloop/internal/customers"
 	"brightloop/internal/db"
+	"brightloop/internal/discounts"
 	"brightloop/internal/httpx"
+	"brightloop/internal/invoices"
+	"brightloop/internal/payments"
 	"brightloop/internal/plans"
+	"brightloop/internal/reports"
+	"brightloop/internal/subscriptions"
+	"brightloop/internal/templates"
 )
 
 func main() {
@@ -60,8 +67,20 @@ func newRouter(database *sql.DB) http.Handler {
 	authHandler := auth.NewHandler(auth.NewStore(database))
 	catalogHandler := catalog.NewHandler(catalog.NewStore(database))
 	plansHandler := plans.NewHandler(plans.NewStore(database))
+	customersHandler := customers.NewHandler(customers.NewStore(database))
+
+	subStore := subscriptions.NewStore(database)
+	subscriptionsHandler := subscriptions.NewHandler(subStore)
+
+	invoicesHandler := invoices.NewHandler(invoices.NewStore(database))
+	paymentsHandler := payments.NewHandler(payments.NewStore(database))
+	discountsHandler := discounts.NewHandler(discounts.NewStore(database))
+	templatesHandler := templates.NewHandler(templates.NewStore(database, subStore))
+	reportsHandler := reports.NewHandler(reports.NewStore(database))
 
 	api := http.NewServeMux()
+
+	// Auth
 	api.HandleFunc("/api/v1/auth/signup", authHandler.Signup)
 	api.HandleFunc("/api/v1/auth/login", authHandler.Login)
 	api.HandleFunc("/api/v1/auth/logout", authHandler.Logout)
@@ -70,16 +89,48 @@ func newRouter(database *sql.DB) http.Handler {
 	api.HandleFunc("/api/v1/auth/reset", authHandler.Reset)
 	api.HandleFunc("/api/v1/meta", authHandler.Meta)
 
+	// Staff / Team
 	api.Handle("/api/v1/staff", http.HandlerFunc(httpx.RequireRole([]string{"admin"}, authHandler.Staff)))
 	api.Handle("/api/v1/staff/", http.HandlerFunc(httpx.RequireRole([]string{"admin"}, authHandler.StaffByID)))
 
+	// Catalog & Plans
 	api.Handle("/api/v1/products", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, catalogHandler.Products)))
 	api.Handle("/api/v1/products/", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, catalogHandler.ProductByID)))
 	api.Handle("/api/v1/taxes", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, catalogHandler.Taxes)))
 	api.Handle("/api/v1/payment-terms", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, catalogHandler.PaymentTerms)))
-
 	api.Handle("/api/v1/plans", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, plansHandler.Plans)))
 	api.Handle("/api/v1/plans/", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, plansHandler.PlanByID)))
+
+	// Customers
+	api.Handle("/api/v1/customers", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, customersHandler.Customers)))
+	api.Handle("/api/v1/customers/", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, customersHandler.CustomerByID)))
+
+	// Subscriptions & Billing
+	api.Handle("/api/v1/subscriptions", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, subscriptionsHandler.Subscriptions)))
+	api.Handle("/api/v1/subscriptions/", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, subscriptionsHandler.SubscriptionByID)))
+	api.Handle("/api/v1/billing/run", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, subscriptionsHandler.BillingRun)))
+
+	// Invoices & Payments
+	api.Handle("/api/v1/invoices", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, invoicesHandler.Invoices)))
+	api.Handle("/api/v1/invoices/", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, invoicesHandler.InvoiceByID)))
+	api.Handle("/api/v1/payments", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, paymentsHandler.Payments)))
+
+	// Discounts & Templates
+	api.Handle("/api/v1/discounts", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, discountsHandler.Discounts)))
+	api.Handle("/api/v1/discounts/", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, discountsHandler.DiscountByID)))
+	api.Handle("/api/v1/templates", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, templatesHandler.Templates)))
+	api.Handle("/api/v1/templates/", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, templatesHandler.TemplateByID)))
+
+	// Reports
+	api.Handle("/api/v1/reports/summary", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, reportsHandler.Summary)))
+	api.Handle("/api/v1/reports/revenue-by-month", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, reportsHandler.RevenueByMonth)))
+	api.Handle("/api/v1/reports/overdue", http.HandlerFunc(httpx.RequireRole([]string{"admin", "staff"}, reportsHandler.Overdue)))
+
+	// Customer Portal
+	api.Handle("/api/v1/me/subscriptions", http.HandlerFunc(httpx.RequireRole([]string{"customer"}, subscriptionsHandler.PortalSubscriptions)))
+	api.Handle("/api/v1/me/subscriptions/", http.HandlerFunc(httpx.RequireRole([]string{"customer"}, subscriptionsHandler.PortalTransition)))
+	api.Handle("/api/v1/me/invoices", http.HandlerFunc(httpx.RequireRole([]string{"customer"}, invoicesHandler.PortalInvoices)))
+	api.Handle("/api/v1/me/invoices/", http.HandlerFunc(httpx.RequireRole([]string{"customer"}, invoicesHandler.PortalInvoices)))
 
 	root := http.NewServeMux()
 	root.HandleFunc("/healthz", health(database))
