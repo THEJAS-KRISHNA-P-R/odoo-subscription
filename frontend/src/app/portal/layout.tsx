@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Home,
   Repeat,
@@ -42,13 +42,24 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const router = useRouter();
   const me = useMe();
-  const { reloadMeta } = useMeta();
+  const { reloadMeta, loading } = useMeta();
   const { showToast } = useToast();
   const { theme, setTheme } = useTheme();
   const { settings: orgSettings } = useOrgSettings();
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!loading && !me) {
+      router.replace('/login');
+    }
+  }, [loading, me, router]);
 
   const cycleTheme = () => {
     const order: ThemePreference[] = ['light', 'dark', 'system'];
@@ -160,6 +171,14 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     </div>
   );
 
+  if (loading || !me) {
+    return (
+      <div className="min-h-screen bg-[var(--bg-app)] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)] flex">
       {/* Desktop collapsible sidebar */}
@@ -217,16 +236,17 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
             <button
               type="button"
               onClick={cycleTheme}
-              aria-label={`Switch theme (current: ${theme})`}
-              title={`Theme: ${theme} (click to switch)`}
+              suppressHydrationWarning
+              aria-label={mounted ? `Switch theme (current: ${theme})` : 'Switch theme'}
+              title={mounted ? `Theme: ${theme} (click to switch)` : 'Switch theme'}
               className="w-9 h-9 rounded-full bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] inline-flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9FE870]"
             >
-              {theme === 'light' ? (
-                <Sun className="w-4 h-4" aria-hidden="true" />
-              ) : theme === 'dark' ? (
-                <Moon className="w-4 h-4" aria-hidden="true" />
-              ) : (
+              {!mounted || theme === 'system' ? (
                 <Monitor className="w-4 h-4" aria-hidden="true" />
+              ) : theme === 'light' ? (
+                <Sun className="w-4 h-4" aria-hidden="true" />
+              ) : (
+                <Moon className="w-4 h-4" aria-hidden="true" />
               )}
             </button>
 

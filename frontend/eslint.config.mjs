@@ -13,8 +13,10 @@ const eslintConfig = defineConfig([
   },
   // Override default ignores of eslint-config-next.
   globalIgnores([
-    // Default ignores of eslint-config-next:
     ".next/**",
+    "node_modules/**",
+    "e2e/**",
+    "playwright.config.ts",
     "out/**",
     "build/**",
     "next-env.d.ts",

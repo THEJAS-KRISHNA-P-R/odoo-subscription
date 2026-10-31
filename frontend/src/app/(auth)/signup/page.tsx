@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { checkPasswordRules } from '@/lib/money';
 import { useMeta } from '@/lib/meta';
@@ -12,8 +12,18 @@ import { useToast } from '@/components/ui/Toast';
 
 export default function SignupPage() {
   const router = useRouter();
-  const { reloadMeta } = useMeta();
+  const { meta, loading, reloadMeta } = useMeta();
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (!loading && meta?.me) {
+      if (meta.me.role === 'customer') {
+        router.replace('/portal/home');
+      } else {
+        router.replace('/home');
+      }
+    }
+  }, [loading, meta, router]);
 
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');

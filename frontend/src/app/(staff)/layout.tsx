@@ -53,11 +53,16 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
   const me = useMe();
-  const { reloadMeta } = useMeta();
+  const { reloadMeta, loading } = useMeta();
   const canWriteStaff = useCan('staff.write');
   const { showToast } = useToast();
   const { theme, setTheme } = useTheme();
   const { settings: orgSettings } = useOrgSettings();
+
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const [catalogOpen, setCatalogOpen] = useState(() => pathname.startsWith('/catalog'));
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -159,10 +164,14 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
   }, [pathname]);
 
   useEffect(() => {
-    if (me && me.role === 'customer') {
-      router.replace('/portal/home');
+    if (!loading) {
+      if (!me) {
+        router.replace('/login');
+      } else if (me.role === 'customer') {
+        router.replace('/portal/home');
+      }
     }
-  }, [me, router]);
+  }, [loading, me, router]);
 
   const primaryLinks: NavLinkItem[] = [
     { href: '/home', label: 'Home', icon: <Home className="w-5 h-5 shrink-0" /> },
@@ -370,7 +379,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
     </div>
   );
 
-  if (me && me.role === 'customer') {
+  if (loading || !me || me.role === 'customer') {
     return (
       <div className="min-h-screen bg-[var(--bg-app)] flex items-center justify-center">
         <div className="w-6 h-6 border-2 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin" />
@@ -445,16 +454,16 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
               type="button"
               onClick={cycleTheme}
               suppressHydrationWarning
-              aria-label={`Switch theme (current: ${theme})`}
-              title={`Theme: ${theme} (click to switch)`}
+              aria-label={mounted ? `Switch theme (current: ${theme})` : 'Switch theme'}
+              title={mounted ? `Theme: ${theme} (click to switch)` : 'Switch theme'}
               className="w-9 h-9 rounded-full bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] inline-flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9FE870]"
             >
-              {theme === 'light' ? (
-                <Sun className="w-4 h-4" aria-hidden="true" />
-              ) : theme === 'dark' ? (
-                <Moon className="w-4 h-4" aria-hidden="true" />
-              ) : (
+              {!mounted || theme === 'system' ? (
                 <Monitor className="w-4 h-4" aria-hidden="true" />
+              ) : theme === 'light' ? (
+                <Sun className="w-4 h-4" aria-hidden="true" />
+              ) : (
+                <Moon className="w-4 h-4" aria-hidden="true" />
               )}
             </button>
 

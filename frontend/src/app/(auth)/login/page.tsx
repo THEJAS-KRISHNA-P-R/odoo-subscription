@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api, ApiError } from '@/lib/api';
 import { useMeta } from '@/lib/meta';
 import { Link, useRouter } from '@/lib/router';
@@ -10,8 +10,18 @@ import { useToast } from '@/components/ui/Toast';
 
 export default function LoginPage() {
   const router = useRouter();
-  const { reloadMeta } = useMeta();
+  const { meta, loading, reloadMeta } = useMeta();
   const { showToast } = useToast();
+
+  useEffect(() => {
+    if (!loading && meta?.me) {
+      if (meta.me.role === 'customer') {
+        router.replace('/portal/home');
+      } else {
+        router.replace('/home');
+      }
+    }
+  }, [loading, meta, router]);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
