@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 export type ProrationPolicy = 'prorate_immediately' | 'next_billing_cycle' | 'none';
 
@@ -77,7 +77,16 @@ function loadStoredSettings(): OrgSettings {
 }
 
 export function OrgSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<OrgSettings>(() => loadStoredSettings());
+  const [settings, setSettings] = useState<OrgSettings>(DEFAULT_ORG_SETTINGS);
+
+  useEffect(() => {
+    try {
+      const stored = loadStoredSettings();
+      setSettings(stored);
+    } catch {
+      // ignore
+    }
+  }, []);
 
   const updateSettings = useCallback((partial: Partial<OrgSettings>) => {
     setSettings((prev) => {

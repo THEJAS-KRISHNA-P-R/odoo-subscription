@@ -51,16 +51,19 @@ function applyResolvedThemeToDom(resolved: ResolvedTheme) {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [mode, setModeState] = useState<ThemeMode>(() => {
-    if (typeof window === 'undefined') return 'system';
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved === 'light' || saved === 'dark' || saved === 'system') {
-      return saved;
-    }
-    return 'system';
-  });
+  const [mode, setModeState] = useState<ThemeMode>('system');
+  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>('light');
 
-  const [systemTheme, setSystemTheme] = useState<ResolvedTheme>(() => getSystemTheme());
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem(STORAGE_KEY);
+      if (saved === 'light' || saved === 'dark' || saved === 'system') {
+        setModeState(saved);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
 
   // Listen to OS-level prefers-color-scheme changes
   useEffect(() => {

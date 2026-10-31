@@ -436,6 +436,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
             <button
               type="button"
               onClick={cycleTheme}
+              suppressHydrationWarning
               aria-label={`Switch theme (current: ${theme})`}
               title={`Theme: ${theme} (click to switch)`}
               className="w-9 h-9 rounded-full bg-[var(--bg-surface)] text-[var(--text-secondary)] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] inline-flex items-center justify-center transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#9FE870]"
