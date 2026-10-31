@@ -1,184 +1,202 @@
-/**
- * API client for the Brightloop backend.
- * All endpoints return JSON with a consistent error shape:
- * {"error":"validation_failed","fields":{"email":"Enter a valid email"}}
- */
+import { navigateTo } from './router';
 
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
-
-/** Arbitrary JSON object returned by the backend. */
-export type ApiRecord = Record<string, unknown>;
-
-interface ErrorBody {
-  error?: string;
-  message?: string;
+export interface ApiErrorPayload {
+  status: number;
+  error: string;
+  message: string;
   fields?: Record<string, string>;
 }
 
-/** Read the error payload from a failed response without throwing. */
-async function errorFrom(response: Response, fallback: string): Promise<Error> {
-  let body: ErrorBody | null = null;
+export class ApiError extends Error implements ApiErrorPayload {
+  status: number;
+  error: string;
+  fields?: Record<string, string>;
+
+  constructor(payload: ApiErrorPayload) {
+    super(payload.message || payload.error || 'Request failed');
+    this.name = 'ApiError';
+    this.status = payload.status;
+    this.error = payload.error;
+    this.fields = payload.fields;
+  }
+}
+
+const rawBaseUrl =
+  (typeof process !== 'undefined' && process.env && process.env.NEXT_PUBLIC_API_URL) ||
+  'http://localhost:8080/api/v1';
+
+export const API_BASE_URL = String(rawBaseUrl).replace(/\/+$/, '');
+
+export function createIdempotencyKey(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+export interface RequestOptions {
+  headers?: Record<string, string>;
+  idempotencyKey?: string;
+  skipAuthRedirect?: boolean;
+}
+
+const AUTH_PATHS = ['/login', '/signup', '/forgot', '/reset'];
+
+async function request<T>(
+  method: 'GET' | 'POST' | 'PATCH' | 'DELETE',
+  path: string,
+  body?: unknown,
+  options?: RequestOptions
+): Promise<T> {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const url = `${API_BASE_URL}${normalizedPath}`;
+
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    ...(options?.headers || {}),
+  };
+
+  if (body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (options?.idempotencyKey) {
+    headers['Idempotency-Key'] = options.idempotencyKey;
+  }
+
+  let response: Response;
   try {
-    body = (await response.json()) as ErrorBody;
+    response = await fetch(url, {
+      method,
+      credentials: 'include',
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (networkErr) {
+    throw new ApiError({
+      status: 0,
+      error: 'network_error',
+      message: `Unable to reach backend API at ${API_BASE_URL}. Ensure the server is running and accessible.`,
+    });
+  }
+
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  let parsed: unknown = null;
+  const contentType = response.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      parsed = await response.json();
+    } catch {
+      parsed = null;
+    }
+  } else {
+    try {
+      const text = await response.text();
+      parsed = text ? JSON.parse(text) : null;
+    } catch {
+      parsed = null;
+    }
+  }
+
+  if (!response.ok) {
+    if (
+      response.status === 401 &&
+      !options?.skipAuthRedirect &&
+      typeof window !== 'undefined' &&
+      !AUTH_PATHS.includes(window.location.pathname)
+    ) {
+      navigateTo('/login', true);
+    }
+
+    const errObj = (parsed && typeof parsed === 'object' ? parsed : {}) as Record<string, unknown>;
+    throw new ApiError({
+      status: response.status,
+      error: typeof errObj.error === 'string' ? errObj.error : `http_${response.status}`,
+      message:
+        typeof errObj.message === 'string'
+          ? errObj.message
+          : `Request failed with status ${response.status}`,
+      fields:
+        errObj.fields && typeof errObj.fields === 'object'
+          ? (errObj.fields as Record<string, string>)
+          : undefined,
+    });
+  }
+
+  return parsed as T;
+}
+
+async function downloadFile(path: string, filename: string): Promise<void> {
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const url = `${API_BASE_URL}${normalizedPath}`;
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+      headers: {
+        Accept: 'text/csv, application/json;q=0.9, */*;q=0.8',
+      },
+    });
   } catch {
-    body = null;
-  }
-  return new Error(body?.message || body?.error || fallback);
-}
-
-async function request(endpoint: string, options: RequestInit = {}): Promise<Response> {
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
-  if (response.status === 401 || response.status === 403) {
-    throw await errorFrom(
-      response,
-      response.status === 401 ? "Unauthorized" : "Forbidden",
-    );
+    throw new ApiError({
+      status: 0,
+      error: 'network_error',
+      message: `Unable to reach backend API at ${API_BASE_URL}. Ensure the server is running and accessible.`,
+    });
   }
 
-  return response;
-}
-
-/** Generic CRUD helpers */
-
-export interface ListResponse<T> {
-  items: T[];
-  total: number;
-  page: number;
-  pages: number;
-}
-
-export interface PaginationParams {
-  page?: number;
-  limit?: number;
-  status?: string;
-  customer?: string;
-  q?: string;
-  from?: string;
-  to?: string;
-  overdue?: boolean;
-}
-
-export async function listInvoices(
-  params: PaginationParams = {},
-): Promise<ListResponse<ApiRecord>> {
-  const paramsString = new URLSearchParams({
-    page: (params.page || 1).toString(),
-    limit: (params.limit || 100).toString(),
-    status: params.status || "",
-    customer: params.customer || "",
-    q: params.q || "",
-    from: params.from || "",
-    to: params.to || "",
-    overdue: params.overdue ? "1" : "0",
-  }).toString();
-
-  const response = await request(`/invoices?${paramsString}`);
   if (!response.ok) {
-    throw await errorFrom(response, "Failed to load invoices");
+    if (
+      response.status === 401 &&
+      typeof window !== 'undefined' &&
+      !AUTH_PATHS.includes(window.location.pathname)
+    ) {
+      navigateTo('/login', true);
+    }
+    let errMessage = `Export failed with status ${response.status}`;
+    try {
+      const parsed = await response.json();
+      if (parsed && typeof parsed.message === 'string') {
+        errMessage = parsed.message;
+      }
+    } catch {
+      // Non-JSON error body
+    }
+    throw new ApiError({
+      status: response.status,
+      error: `http_${response.status}`,
+      message: errMessage,
+    });
   }
-  return response.json() as Promise<ListResponse<ApiRecord>>;
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(objectUrl);
 }
 
-export async function listSubscriptions(
-  params: PaginationParams = {},
-): Promise<ListResponse<ApiRecord>> {
-  const paramsString = new URLSearchParams({
-    page: (params.page || 1).toString(),
-    limit: (params.limit || 100).toString(),
-    status: params.status || "",
-    customer: params.customer || "",
-    q: params.q || "",
-  }).toString();
-
-  const response = await request(`/subscriptions?${paramsString}`);
-  if (!response.ok) {
-    throw await errorFrom(response, "Failed to load subscriptions");
-  }
-  return response.json() as Promise<ListResponse<ApiRecord>>;
-}
-
-export async function createSubscription(data: ApiRecord): Promise<ApiRecord> {
-  const response = await request("/subscriptions", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    throw await errorFrom(response, "Failed to create subscription");
-  }
-  return response.json() as Promise<ApiRecord>;
-}
-
-export async function updateSubscription(
-  id: number,
-  data: ApiRecord,
-): Promise<ApiRecord> {
-  const response = await request(`/subscriptions/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    throw await errorFrom(response, "Failed to update subscription");
-  }
-  return response.json() as Promise<ApiRecord>;
-}
-
-export async function runBilling(
-  asOf?: string,
-  dryRun = false,
-): Promise<ApiRecord> {
-  const response = await request("/billing/run", {
-    method: "POST",
-    body: JSON.stringify({ asOf, dryRun }),
-  });
-  if (!response.ok) {
-    throw await errorFrom(response, "Failed to run billing");
-  }
-  return response.json() as Promise<ApiRecord>;
-}
-
-export interface AuthResponse {
-  token: string;
-  user: ApiRecord;
-}
-
-export async function authenticate(
-  email: string,
-  password: string,
-): Promise<AuthResponse> {
-  const response = await request("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
-  if (!response.ok) {
-    throw await errorFrom(response, "Login failed");
-  }
-  return response.json() as Promise<AuthResponse>;
-}
-
-export interface SignupResponse {
-  user: ApiRecord;
-  customer: ApiRecord;
-}
-
-export async function signup(data: {
-  email: string;
-  password: string;
-  fullName: string;
-}): Promise<SignupResponse> {
-  const response = await request("/auth/signup", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
-  if (!response.ok) {
-    throw await errorFrom(response, "Signup failed");
-  }
-  return response.json() as Promise<SignupResponse>;
-}
+export const api = {
+  get: <T = unknown>(path: string, options?: RequestOptions) =>
+    request<T>('GET', path, undefined, options),
+  post: <T = unknown>(path: string, body?: unknown, options?: RequestOptions) =>
+    request<T>('POST', path, body, options),
+  patch: <T = unknown>(path: string, body?: unknown, options?: RequestOptions) =>
+    request<T>('PATCH', path, body, options),
+  delete: <T = unknown>(path: string, options?: RequestOptions) =>
+    request<T>('DELETE', path, undefined, options),
+  download: (path: string, filename: string) => downloadFile(path, filename),
+};
