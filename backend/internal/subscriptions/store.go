@@ -11,21 +11,21 @@ import (
 
 // Subscription is the full view returned by GET /subscriptions/{id}.
 type Subscription struct {
-	ID              int64   `json:"id"`
-	Number          string  `json:"number"`
-	CustomerID      int64   `json:"customer_id"`
-	CustomerName    string  `json:"customer_name"`
-	PlanID          int64   `json:"plan_id"`
-	PlanName        string  `json:"plan_name"`
-	Status          string  `json:"status"`
-	StartDate       string  `json:"start_date"`
-	ExpiryDate      string  `json:"expiry_date"`
-	QuoteValidUntil *string `json:"quote_valid_until"`
-	NextBillingDate *string `json:"next_billing_date"`
-	PaymentTermID   int64   `json:"payment_term_id"`
-	PaymentTermName string  `json:"payment_term_name"`
-	Lines           []Line  `json:"lines"`
-	Totals          Totals  `json:"totals"`
+	ID              int64    `json:"id"`
+	Number          string   `json:"number"`
+	CustomerID      int64    `json:"customer_id"`
+	CustomerName    string   `json:"customer_name"`
+	PlanID          int64    `json:"plan_id"`
+	PlanName        string   `json:"plan_name"`
+	Status          string   `json:"status"`
+	StartDate       string   `json:"start_date"`
+	ExpiryDate      string   `json:"expiry_date"`
+	QuoteValidUntil *string  `json:"quote_valid_until"`
+	NextBillingDate *string  `json:"next_billing_date"`
+	PaymentTermID   int64    `json:"payment_term_id"`
+	PaymentTermName string   `json:"payment_term_name"`
+	Lines           []Line   `json:"lines"`
+	Totals          Totals   `json:"totals"`
 	AllowedActions  []string `json:"allowed_actions"`
 }
 
@@ -332,9 +332,9 @@ func (s *Store) RunBilling(ctx context.Context, actorID int64, today time.Time) 
 		return nil, err
 	}
 	type dueRow struct {
-		id, custID, termID                       int64
-		startStr, nextStr, expiryStr, periodStr  string
-		autoClose                                bool
+		id, custID, termID                      int64
+		startStr, nextStr, expiryStr, periodStr string
+		autoClose                               bool
 	}
 	var dues []dueRow
 	for rows.Next() {
@@ -394,10 +394,10 @@ func (s *Store) billOne(ctx context.Context,
 		return err
 	}
 	type lineRow struct {
-		pid  *int64
-		desc string
-		qty  int
-		unit int64
+		pid   *int64
+		desc  string
+		qty   int
+		unit  int64
 		taxBP int64
 	}
 	var slines []lineRow

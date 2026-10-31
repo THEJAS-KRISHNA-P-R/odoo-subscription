@@ -47,14 +47,14 @@ func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 type createReq struct {
-	CustomerID     int64       `json:"customer_id"`
-	PlanID         int64       `json:"plan_id"`
-	PaymentTermID  int64       `json:"payment_term_id"`
-	TemplateID     *int64      `json:"template_id"`
-	StartDate      string      `json:"start_date"`
-	ExpiryDate     string      `json:"expiry_date"`
-	QuoteValidUntil *string    `json:"quote_valid_until"`
-	Lines          []lineReq   `json:"lines"`
+	CustomerID      int64     `json:"customer_id"`
+	PlanID          int64     `json:"plan_id"`
+	PaymentTermID   int64     `json:"payment_term_id"`
+	TemplateID      *int64    `json:"template_id"`
+	StartDate       string    `json:"start_date"`
+	ExpiryDate      string    `json:"expiry_date"`
+	QuoteValidUntil *string   `json:"quote_valid_until"`
+	Lines           []lineReq `json:"lines"`
 }
 
 type lineReq struct {

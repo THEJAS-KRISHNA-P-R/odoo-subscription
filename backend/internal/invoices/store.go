@@ -9,27 +9,27 @@ import (
 
 // Invoice is the full invoice record returned by GET /invoices/{id}.
 type Invoice struct {
-	ID                 int64          `json:"id"`
-	Number             string         `json:"number"`
-	SubscriptionID     int64          `json:"subscription_id"`
-	SubscriptionNumber string         `json:"subscription_number"`
-	CustomerID         int64          `json:"customer_id"`
-	CustomerName       string         `json:"customer_name"`
-	Status             string         `json:"status"`
-	IsOverdue          bool           `json:"is_overdue"`
-	PeriodStart        string         `json:"period_start"`
-	PeriodEnd          string         `json:"period_end"`
-	IssueDate          string         `json:"issue_date"`
-	DueDate            string         `json:"due_date"`
-	SubtotalMinor      int64          `json:"subtotal_minor"`
-	DiscountMinor      int64          `json:"discount_minor"`
-	TaxMinor           int64          `json:"tax_minor"`
-	TotalMinor         int64          `json:"total_minor"`
-	PaidMinor          int64          `json:"paid_minor"`
-	OutstandingMinor   int64          `json:"outstanding_minor"`
-	SentAt             *time.Time     `json:"sent_at"`
-	Lines              []InvoiceLine  `json:"lines,omitempty"`
-	Payments           []InvPayment   `json:"payments,omitempty"`
+	ID                 int64         `json:"id"`
+	Number             string        `json:"number"`
+	SubscriptionID     int64         `json:"subscription_id"`
+	SubscriptionNumber string        `json:"subscription_number"`
+	CustomerID         int64         `json:"customer_id"`
+	CustomerName       string        `json:"customer_name"`
+	Status             string        `json:"status"`
+	IsOverdue          bool          `json:"is_overdue"`
+	PeriodStart        string        `json:"period_start"`
+	PeriodEnd          string        `json:"period_end"`
+	IssueDate          string        `json:"issue_date"`
+	DueDate            string        `json:"due_date"`
+	SubtotalMinor      int64         `json:"subtotal_minor"`
+	DiscountMinor      int64         `json:"discount_minor"`
+	TaxMinor           int64         `json:"tax_minor"`
+	TotalMinor         int64         `json:"total_minor"`
+	PaidMinor          int64         `json:"paid_minor"`
+	OutstandingMinor   int64         `json:"outstanding_minor"`
+	SentAt             *time.Time    `json:"sent_at"`
+	Lines              []InvoiceLine `json:"lines,omitempty"`
+	Payments           []InvPayment  `json:"payments,omitempty"`
 }
 
 // InvoiceLine is one line of an invoice.
@@ -45,11 +45,11 @@ type InvoiceLine struct {
 
 // InvPayment is a payment entry embedded in an invoice detail.
 type InvPayment struct {
-	ID           int64     `json:"id"`
-	Method       string    `json:"method"`
-	AmountMinor  int64     `json:"amount_minor"`
-	PaidOn       string    `json:"paid_on"`
-	Note         string    `json:"note"`
+	ID          int64  `json:"id"`
+	Method      string `json:"method"`
+	AmountMinor int64  `json:"amount_minor"`
+	PaidOn      string `json:"paid_on"`
+	Note        string `json:"note"`
 }
 
 type Store struct {

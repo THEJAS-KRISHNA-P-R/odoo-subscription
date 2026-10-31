@@ -35,12 +35,15 @@ export default function LoginPage() {
     setFields({});
     setSubmitting(true);
     try {
-      const res = await api.post<{ role?: string }>('/auth/login', {
+      const res = await api.post<{
+        role?: string;
+        user?: { role?: string; id?: number; full_name?: string };
+      }>('/auth/login', {
         email: email.trim(),
         password,
       });
       const updatedMeta = await reloadMeta();
-      const role = res?.role || updatedMeta?.me?.role;
+      const role = res?.role || res?.user?.role || updatedMeta?.me?.role;
       if (role === 'customer') {
         router.push('/portal/home');
       } else {

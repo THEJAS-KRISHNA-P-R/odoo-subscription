@@ -90,6 +90,11 @@ func (h *Handler) get(w http.ResponseWriter, r *http.Request, id int64) {
 }
 
 func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
+	if claims, ok := httpx.GetUserFromContext(r.Context()); !ok || claims.Role != "admin" {
+		httpx.Forbidden(w, "Only administrators can create discount rules")
+		return
+	}
+
 	var req discountRequest
 	if !httpx.ParseJSON(w, r, &req) {
 		return
@@ -133,6 +138,11 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) update(w http.ResponseWriter, r *http.Request, id int64) {
+	if claims, ok := httpx.GetUserFromContext(r.Context()); !ok || claims.Role != "admin" {
+		httpx.Forbidden(w, "Only administrators can update discount rules")
+		return
+	}
+
 	var req discountRequest
 	if !httpx.ParseJSON(w, r, &req) {
 		return

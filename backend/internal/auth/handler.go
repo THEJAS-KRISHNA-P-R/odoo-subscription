@@ -145,6 +145,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 
 	_ = httpx.JSON(w, http.StatusOK, map[string]any{
 		"token": token,
+		"role":  user.Role,
 		"user": map[string]any{
 			"id":          user.ID,
 			"email":       user.Email,
@@ -279,7 +280,7 @@ func (h *Handler) Meta(w http.ResponseWriter, r *http.Request) {
 		var caps []string
 		switch claims.Role {
 		case "admin":
-			caps = []string{"billing.run", "payment.record", "catalog.write", "discounts.write", "staff.write", "subscriptions.write", "invoices.write"}
+			caps = []string{"billing.run", "payment.record", "catalog.write", "discounts.write", "discount.write", "staff.write", "subscriptions.write", "invoices.write"}
 		case "staff":
 			caps = []string{"billing.run", "payment.record", "subscriptions.write", "invoices.write"}
 		case "customer":
@@ -294,7 +295,7 @@ func (h *Handler) Meta(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Cache-Control", "max-age=300")
+	w.Header().Set("Cache-Control", "no-store, no-cache, must-revalidate")
 	_ = httpx.JSON(w, http.StatusOK, map[string]any{
 		"enums": map[string]any{
 			"billing_period": []map[string]string{

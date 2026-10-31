@@ -25,9 +25,9 @@ type templateRequest struct {
 }
 
 type templateLineReq struct {
-	ProductID any    `json:"product_id"`
-	VariantID any    `json:"variant_id"`
-	Quantity  int    `json:"quantity"`
+	ProductID any `json:"product_id"`
+	VariantID any `json:"variant_id"`
+	Quantity  int `json:"quantity"`
 }
 
 type instantiateReq struct {

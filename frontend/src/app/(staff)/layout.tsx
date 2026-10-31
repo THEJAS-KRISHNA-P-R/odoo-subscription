@@ -370,6 +370,14 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
     </div>
   );
 
+  if (me && me.role === 'customer') {
+    return (
+      <div className="min-h-screen bg-[var(--bg-app)] flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)] flex">
       {/* Desktop collapsible sidebar (>=1024px) */}

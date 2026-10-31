@@ -282,13 +282,13 @@ func seed(ctx context.Context, database *sql.DB) error {
 	oneYearLater := now.AddDate(1, 0, 0).Format("2006-01-02")
 
 	type subSeed struct {
-		number     string
-		custID     int64
-		planID     int64
-		status     string
-		start      string
-		expiry     string
-		nextBill   *string
+		number   string
+		custID   int64
+		planID   int64
+		status   string
+		start    string
+		expiry   string
+		nextBill *string
 	}
 
 	subSeeds := []subSeed{
