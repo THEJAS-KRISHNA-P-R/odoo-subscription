@@ -33,6 +33,7 @@ import { Drawer, DrawerSection } from '@/components/ui/Drawer';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { CommandPalette } from '@/components/ui/CommandPalette';
 import { useToast } from '@/components/ui/Toast';
+import { BrandLoopLogo } from '@/components/ui/MellowArt';
 
 interface NavLinkItem {
   href: string;
@@ -226,9 +227,7 @@ export default function StaffLayout({ children }: { children: React.ReactNode })
               className="w-9 h-9 rounded-[10px] object-contain bg-[var(--bg-surface)] p-1 shrink-0"
             />
           ) : (
-            <span className="w-9 h-9 rounded-full bg-[var(--brand-primary)] text-[var(--brand-primary-fg)] font-bold text-[17px] inline-flex items-center justify-center shrink-0">
-              {(orgSettings.companyName || 'Brightloop').charAt(0).toUpperCase()}
-            </span>
+            <BrandLoopLogo size={36} />
           )}
           {!collapsed && (
             <span className="text-[18px] font-bold tracking-[-0.02em] truncate">

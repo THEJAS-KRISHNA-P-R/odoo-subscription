@@ -21,6 +21,7 @@ import { Link, usePathname, useRouter } from '@/lib/router';
 import { useTheme, ThemePreference } from '@/lib/theme';
 import { useOrgSettings } from '@/lib/orgSettings';
 import { useToast } from '@/components/ui/Toast';
+import { BrandLoopLogo } from '@/components/ui/MellowArt';
 
 const PORTAL_NAV_ITEMS: Array<{ href: string; label: string; icon: React.ReactNode }> = [
   { href: '/portal/home', label: 'Home', icon: <Home className="w-5 h-5 shrink-0" /> },
@@ -89,9 +90,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
               className="w-9 h-9 rounded-[10px] object-contain bg-[var(--bg-surface)] p-1 shrink-0"
             />
           ) : (
-            <span className="w-9 h-9 rounded-full bg-[var(--brand-primary)] text-[var(--brand-primary-fg)] font-bold text-[17px] inline-flex items-center justify-center shrink-0">
-              {(orgSettings.companyName || 'Brightloop').charAt(0).toUpperCase()}
-            </span>
+            <BrandLoopLogo size={36} />
           )}
           {!collapsed && (
             <span className="text-[18px] font-bold tracking-[-0.02em] truncate">
