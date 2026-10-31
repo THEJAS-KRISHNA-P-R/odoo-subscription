@@ -403,6 +403,8 @@ func (h *Handler) CreateStaff(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(req.FullName)
 	if name == "" {
 		fields["full_name"] = "Name is required"
+	} else if len([]rune(name)) > 120 {
+		fields["full_name"] = "Too long"
 	}
 	email := strings.TrimSpace(req.Email)
 	if !validEmail(email) {
@@ -469,6 +471,10 @@ func (h *Handler) UpdateStaff(w http.ResponseWriter, r *http.Request) {
 
 	if req.Role != "" && req.Role != "admin" && req.Role != "staff" {
 		httpx.ValidationError(w, map[string]string{"role": "Role must be admin or staff"})
+		return
+	}
+	if strings.TrimSpace(req.FullName) != "" && len([]rune(strings.TrimSpace(req.FullName))) > 120 {
+		httpx.ValidationError(w, map[string]string{"full_name": "Too long"})
 		return
 	}
 
