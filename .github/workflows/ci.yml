@@ -1,0 +1,64 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: brightloop
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d brightloop"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/brightloop?sslmode=disable
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend/go.mod
+          cache-dependency-path: backend/go.sum
+
+      - name: Download dependencies
+        working-directory: backend
+        run: go mod download
+
+      - name: Check formatting
+        working-directory: backend
+        run: test -z "$(gofmt -l .)"
+
+      - name: Verify modules
+        working-directory: backend
+        run: go mod verify
+
+      - name: Apply migrations
+        working-directory: backend
+        run: go run ./cmd/migrate
+
+      - name: Vet and test
+        working-directory: backend
+        run: go vet ./... && go test ./...
+
+      - name: Reject frontend mock data
+        run: bash scripts/check-no-mock.sh frontend

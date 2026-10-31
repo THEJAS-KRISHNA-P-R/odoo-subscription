@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
+	"strconv"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -16,7 +17,7 @@ func Open(dsn string) (*sql.DB, error) {
 		dsn = os.Getenv("DATABASE_URL")
 	}
 	if dsn == "" {
-		dsn = "postgres://postgres:postgres@localhost:5433/brightloop?sslmode=disable"
+		dsn = "postgres://postgres:postgres@localhost:5432/brightloop?sslmode=disable"
 	}
 
 	db, err := sql.Open("pgx", dsn)
@@ -24,8 +25,16 @@ func Open(dsn string) (*sql.DB, error) {
 		return nil, fmt.Errorf("open db: %w", err)
 	}
 
-	db.SetMaxOpenConns(20)
-	db.SetMaxIdleConns(5)
+	maxConns := 20
+	if value, err := strconv.Atoi(os.Getenv("DB_MAX_CONNS")); err == nil && value > 0 {
+		maxConns = value
+	}
+	db.SetMaxOpenConns(maxConns)
+	maxIdleConns := maxConns / 4
+	if maxIdleConns < 1 {
+		maxIdleConns = 1
+	}
+	db.SetMaxIdleConns(maxIdleConns)
 	db.SetConnMaxLifetime(15 * time.Minute)
 	db.SetConnMaxIdleTime(5 * time.Minute)
 
@@ -65,4 +74,3 @@ func WithTx(ctx context.Context, db *sql.DB, fn func(tx *sql.Tx) error) (err err
 	}
 	return nil
 }
-

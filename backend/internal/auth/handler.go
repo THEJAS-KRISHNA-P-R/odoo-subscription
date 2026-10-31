@@ -48,7 +48,7 @@ func (h *Handler) Signup(w http.ResponseWriter, r *http.Request) {
 	email := strings.TrimSpace(req.Email)
 	if email == "" {
 		fields["email"] = "Enter a valid email"
-	} else if _, err := mail.ParseAddress(email); err != nil || len(email) > 254 {
+	} else if !validEmail(email) {
 		fields["email"] = "Enter a valid email"
 	}
 
@@ -365,6 +365,27 @@ func (h *Handler) ListStaff(w http.ResponseWriter, r *http.Request) {
 	_ = httpx.JSON(w, http.StatusOK, map[string]any{"items": staff})
 }
 
+// Staff dispatches the collection endpoints for the admin-only team resource.
+func (h *Handler) Staff(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		h.ListStaff(w, r)
+	case http.MethodPost:
+		h.CreateStaff(w, r)
+	default:
+		httpx.MethodNotAllowed(w, "GET, POST")
+	}
+}
+
+// StaffByID dispatches updates for one staff account.
+func (h *Handler) StaffByID(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPatch {
+		httpx.MethodNotAllowed(w, http.MethodPatch)
+		return
+	}
+	h.UpdateStaff(w, r)
+}
+
 type CreateStaffRequest struct {
 	FullName string `json:"full_name"`
 	Email    string `json:"email"`
@@ -382,9 +403,11 @@ func (h *Handler) CreateStaff(w http.ResponseWriter, r *http.Request) {
 	name := strings.TrimSpace(req.FullName)
 	if name == "" {
 		fields["full_name"] = "Name is required"
+	} else if len([]rune(name)) > 120 {
+		fields["full_name"] = "Too long"
 	}
 	email := strings.TrimSpace(req.Email)
-	if email == "" || len(email) > 254 {
+	if !validEmail(email) {
 		fields["email"] = "Enter a valid email"
 	}
 	if msg := ValidatePassword(req.Password); msg != "" {
@@ -419,6 +442,14 @@ func (h *Handler) CreateStaff(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func validEmail(value string) bool {
+	if value == "" || len(value) > 254 || strings.ContainsAny(value, "\r\n") {
+		return false
+	}
+	parsed, err := mail.ParseAddress(value)
+	return err == nil && parsed.Address == value
+}
+
 type UpdateStaffRequest struct {
 	FullName string `json:"full_name"`
 	Role     string `json:"role"`
@@ -440,6 +471,10 @@ func (h *Handler) UpdateStaff(w http.ResponseWriter, r *http.Request) {
 
 	if req.Role != "" && req.Role != "admin" && req.Role != "staff" {
 		httpx.ValidationError(w, map[string]string{"role": "Role must be admin or staff"})
+		return
+	}
+	if strings.TrimSpace(req.FullName) != "" && len([]rune(strings.TrimSpace(req.FullName))) > 120 {
+		httpx.ValidationError(w, map[string]string{"full_name": "Too long"})
 		return
 	}
 

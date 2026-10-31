@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
@@ -63,6 +64,12 @@ func ValidationError(w http.ResponseWriter, fields map[string]string) {
 // BadRequest writes a 400 bad_request response.
 func BadRequest(w http.ResponseWriter, message string) {
 	JSONError(w, http.StatusBadRequest, "bad_request", message, nil)
+}
+
+// MethodNotAllowed reports an unsupported method and tells clients what is accepted.
+func MethodNotAllowed(w http.ResponseWriter, allowed string) {
+	w.Header().Set("Allow", allowed)
+	JSONError(w, http.StatusMethodNotAllowed, "method_not_allowed", "Method not allowed", nil)
 }
 
 // Unauthorized writes a 401 unauthenticated response.
@@ -195,8 +202,13 @@ func FromPg(w http.ResponseWriter, err error, constraintMap map[string]string) b
 // Session store for cookie-based authentication
 var (
 	sessionsMu sync.RWMutex
-	sessions   = make(map[string]UserClaims) // token -> user
+	sessions   = make(map[string]session)
 )
+
+type session struct {
+	claims    UserClaims
+	expiresAt time.Time
+}
 
 // CreateSession generates a secure token, maps it to claims, and sets an httpOnly cookie.
 func CreateSession(w http.ResponseWriter, claims UserClaims) string {
@@ -205,16 +217,18 @@ func CreateSession(w http.ResponseWriter, claims UserClaims) string {
 	token := hex.EncodeToString(b)
 
 	sessionsMu.Lock()
-	sessions[token] = claims
+	sessions[token] = session{claims: claims, expiresAt: time.Now().Add(8 * time.Hour)}
 	sessionsMu.Unlock()
 
+	secure := os.Getenv("APP_ENV") == "production"
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session",
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Expires:  time.Now().Add(24 * 7 * time.Hour),
+		Secure:   secure,
+		Expires:  time.Now().Add(8 * time.Hour),
 	})
 
 	return token
@@ -234,6 +248,8 @@ func ClearSession(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   os.Getenv("APP_ENV") == "production",
+		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 		Expires:  time.Unix(0, 0),
 	})
@@ -257,12 +273,16 @@ func AuthMiddleware(next http.Handler) http.Handler {
 
 		if token != "" {
 			sessionsMu.RLock()
-			claims, found := sessions[token]
+			stored, found := sessions[token]
 			sessionsMu.RUnlock()
 
-			if found {
-				ctx := context.WithValue(r.Context(), userContextKey, claims)
+			if found && time.Now().Before(stored.expiresAt) {
+				ctx := context.WithValue(r.Context(), userContextKey, stored.claims)
 				r = r.WithContext(ctx)
+			} else if found {
+				sessionsMu.Lock()
+				delete(sessions, token)
+				sessionsMu.Unlock()
 			}
 		}
 
@@ -325,6 +345,28 @@ func ParseKeysetPagination(r *http.Request) (limit int, cursor int64) {
 	return limit, cursor
 }
 
+// ParseKeysetPaginationValues validates pagination query parameters instead of silently
+// treating malformed cursors as the first page.
+func ParseKeysetPaginationValues(r *http.Request) (limit int, cursor int64, err error) {
+	limit, cursor = 25, 0
+	q := r.URL.Query()
+	if value := q.Get("limit"); value != "" {
+		parsed, parseErr := strconv.Atoi(value)
+		if parseErr != nil || parsed < 1 || parsed > 100 {
+			return 0, 0, fmt.Errorf("limit must be between 1 and 100")
+		}
+		limit = parsed
+	}
+	if value := q.Get("cursor"); value != "" {
+		parsed, parseErr := strconv.ParseInt(value, 10, 64)
+		if parseErr != nil || parsed < 1 {
+			return 0, 0, fmt.Errorf("cursor must be a positive integer")
+		}
+		cursor = parsed
+	}
+	return limit, cursor, nil
+}
+
 // KeysetListResponse formats a standard keyset-paginated list output.
 type KeysetListResponse[T any] struct {
 	Items      []T     `json:"items"`
@@ -361,7 +403,12 @@ func NewKeysetList[T any](items []T, limit int, getID func(item T) int64) Keyset
 func CORS(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		if origin != "" {
+		allowedOrigin := os.Getenv("APP_URL")
+		if allowedOrigin == "" {
+			allowedOrigin = "http://localhost:3000"
+		}
+		if origin != "" && origin == allowedOrigin {
+			w.Header().Add("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 			w.Header().Set("Access-Control-Allow-Credentials", "true")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, Idempotency-Key")
@@ -375,6 +422,11 @@ func CORS(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+// RequestTimeout bounds handler work so a client cannot hold a request forever.
+func RequestTimeout(next http.Handler) http.Handler {
+	return http.TimeoutHandler(next, 10*time.Second, `{"error":"timeout","message":"Request timed out"}`)
 }
 
 // IdempotencyMiddleware prevents duplicate execution of state-changing operations.

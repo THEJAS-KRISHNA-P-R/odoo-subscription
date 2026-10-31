@@ -113,6 +113,12 @@ func (s *Store) CreatePasswordReset(ctx context.Context, userID int64, tokenHash
 	defer tx.Rollback()
 
 	var resetID int64
+	if _, err := tx.ExecContext(ctx,
+		`UPDATE password_resets SET used_at = now()
+		 WHERE user_id = $1 AND used_at IS NULL`, userID,
+	); err != nil {
+		return err
+	}
 	err = tx.QueryRowContext(ctx,
 		`INSERT INTO password_resets (user_id, token_hash, expires_at)
 		 VALUES ($1, $2, $3)
