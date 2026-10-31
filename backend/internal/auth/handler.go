@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/mail"
+	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -213,7 +215,12 @@ func (h *Handler) Forgot(w http.ResponseWriter, r *http.Request) {
 		expiresAt := time.Now().Add(30 * time.Minute)
 
 		subject := "Reset your Brightloop password"
-		body := fmt.Sprintf("Use this token to reset your password within 30 minutes: %s", rawToken)
+		appURL := strings.TrimRight(os.Getenv("APP_URL"), "/")
+		if appURL == "" {
+			appURL = "http://localhost:3000"
+		}
+		resetURL := appURL + "/reset?token=" + url.QueryEscape(rawToken)
+		body := fmt.Sprintf("Reset your Brightloop password using this link within 30 minutes:\n%s", resetURL)
 
 		_ = h.store.CreatePasswordReset(r.Context(), user.ID, tokenHash, expiresAt, user.Email, subject, body)
 	}
