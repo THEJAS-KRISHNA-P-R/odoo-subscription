@@ -114,6 +114,7 @@ export function InvoiceDrawer({
       <Drawer
         open={open}
         onClose={onClose}
+        printable
         title={invoice ? `Invoice ${invoice.number}` : 'Invoice details'}
         badge={
           invoice ? (
@@ -233,7 +234,7 @@ export function InvoiceDrawer({
             </div>
 
             {viewMode === 'pdf' ? (
-              <div className="p-6">
+              <div className="p-6 print-sheet">
                 <div className="bg-[var(--bg-card)] border border-[var(--border-hair)] rounded-[20px] p-7 space-y-6 shadow-[var(--shadow-diffuse)]">
                   {/* Branded PDF Invoice Header with Company Logo */}
                   <div className="flex items-start justify-between gap-4 pb-6 border-b border-[var(--border-faint)]">
