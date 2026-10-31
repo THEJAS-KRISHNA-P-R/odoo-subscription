@@ -18,6 +18,7 @@ import (
 	"brightloop/internal/discounts"
 	"brightloop/internal/httpx"
 	"brightloop/internal/invoices"
+	"brightloop/internal/mail"
 	"brightloop/internal/payments"
 	"brightloop/internal/plans"
 	"brightloop/internal/reports"
@@ -45,6 +46,10 @@ func main() {
 		WriteTimeout:      15 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
+	runContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mailWorker := mail.NewWorker(database, mail.ConfigFromEnv())
+	go mailWorker.Run(runContext)
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
@@ -55,6 +60,7 @@ func main() {
 		if err := server.Shutdown(ctx); err != nil {
 			log.Printf("server shutdown: %v", err)
 		}
+		cancel()
 	}()
 
 	log.Printf("Brightloop API listening on http://localhost:%s", port)

@@ -221,14 +221,13 @@ func CreateSession(w http.ResponseWriter, claims UserClaims) string {
 	sessions[token] = session{claims: claims, expiresAt: time.Now().Add(8 * time.Hour)}
 	sessionsMu.Unlock()
 
-	secure := os.Getenv("APP_ENV") == "production"
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session",
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
-		Secure:   secure,
+		Secure:   true,
 		Expires:  time.Now().Add(8 * time.Hour),
 	})
 
@@ -249,7 +248,7 @@ func ClearSession(w http.ResponseWriter, r *http.Request) {
 		Value:    "",
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   os.Getenv("APP_ENV") == "production",
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   -1,
 		Expires:  time.Unix(0, 0),

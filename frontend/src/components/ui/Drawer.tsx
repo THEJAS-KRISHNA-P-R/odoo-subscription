@@ -10,10 +10,11 @@ export interface DrawerProps {
   title: React.ReactNode;
   badge?: React.ReactNode;
   footer?: React.ReactNode;
+  printable?: boolean;
   children: React.ReactNode;
 }
 
-export function Drawer({ open, onClose, title, badge, footer, children }: DrawerProps) {
+export function Drawer({ open, onClose, title, badge, footer, printable = false, children }: DrawerProps) {
   useEffect(() => {
     if (!open) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -33,14 +34,14 @@ export function Drawer({ open, onClose, title, badge, footer, children }: Drawer
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[99998] flex justify-end no-print" role="dialog" aria-modal="true">
+    <div className={`fixed inset-0 z-[99998] flex justify-end ${printable ? 'print-drawer' : 'no-print'}`} role="dialog" aria-modal="true">
       <div
-        className="fixed inset-0 bg-[var(--bg-scrim)] backdrop-blur-[4px] animate-fade-in"
+        className="fixed inset-0 bg-[var(--bg-scrim)] backdrop-blur-[4px] animate-fade-in no-print"
         onClick={onClose}
         aria-hidden="true"
       />
-      <div className="relative z-[99999] w-full sm:w-[560px] max-w-full h-full bg-[var(--bg-card)] shadow-[var(--shadow-drawer)] flex flex-col overflow-hidden animate-slide-in-right">
-        <div className="px-[32px] py-[24px] border-b border-[var(--border-faint)] flex items-center justify-between gap-4 shrink-0">
+      <div className="drawer-panel relative z-[99999] w-full sm:w-[560px] max-w-full h-full bg-[var(--bg-card)] shadow-[var(--shadow-drawer)] flex flex-col overflow-hidden animate-slide-in-right">
+        <div className="px-[32px] py-[24px] border-b border-[var(--border-faint)] flex items-center justify-between gap-4 shrink-0 no-print">
           <div className="flex items-center gap-3 min-w-0">
             <h2 className="text-[20px] font-semibold tracking-[-0.02em] text-[var(--text-primary)] truncate">
               {title}
@@ -57,12 +58,12 @@ export function Drawer({ open, onClose, title, badge, footer, children }: Drawer
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto divide-y divide-[var(--border-faint)]">
+        <div className="drawer-content flex-1 overflow-y-auto divide-y divide-[var(--border-faint)]">
           {children}
         </div>
 
         {footer && (
-          <div className="px-[32px] py-[20px] border-t border-[var(--border-faint)] bg-[var(--bg-card)] flex flex-wrap items-center justify-end gap-2.5 shrink-0">
+          <div className="px-[32px] py-[20px] border-t border-[var(--border-faint)] bg-[var(--bg-card)] flex flex-wrap items-center justify-end gap-2.5 shrink-0 no-print">
             {footer}
           </div>
         )}

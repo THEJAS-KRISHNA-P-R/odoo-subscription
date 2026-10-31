@@ -159,4 +159,37 @@ body {
     page-break-inside: avoid;
     break-inside: avoid;
   }
+
+  .print-drawer {
+    position: static !important;
+    inset: auto !important;
+    display: block !important;
+    z-index: auto !important;
+  }
+
+  .print-drawer .drawer-panel {
+    position: static !important;
+    width: auto !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    animation: none !important;
+  }
+
+  .print-drawer .drawer-content {
+    overflow: visible !important;
+    display: block !important;
+  }
+
+  .print-sheet {
+    padding: 0 !important;
+  }
+
+  .print-sheet > div {
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
 }

@@ -176,6 +176,12 @@ export function NewSubscriptionModal({
     if (!startDate) {
       clientErrs.start_date = 'Start date is required';
     }
+    if (!paymentTermId) {
+      clientErrs.payment_term_id = 'Select a payment term';
+    }
+    if (!expiryDate) {
+      clientErrs.expiry_date = 'Expiry date is required';
+    }
     if (expiryDate && expiryDate < startDate) {
       clientErrs.expiry_date = 'End date must be after start date';
     }
@@ -196,16 +202,24 @@ export function NewSubscriptionModal({
     setSubmitting(true);
     try {
       const created = await api.post<Subscription>('/subscriptions', {
-        customer_id: selectedCustomer.id,
-        plan_id: selectedPlanId,
-        payment_term_id: paymentTermId || null,
+        customer_id: Number(selectedCustomer.id),
+        plan_id: Number(selectedPlanId),
+        payment_term_id: Number(paymentTermId),
         start_date: startDate,
-        expiry_date: expiryDate || null,
-        lines: lines.map((l) => ({
-          product_id: l.product_id,
-          variant_id: l.variant_id || null,
-          quantity: Number(l.quantity),
-        })),
+        expiry_date: expiryDate,
+        lines: lines.map((l) => {
+          const product = productsList.items.find(
+            (p) => String(p.id) === String(l.product_id)
+          );
+          return {
+            product_id: Number(l.product_id),
+            variant_id: l.variant_id ? Number(l.variant_id) : null,
+            description: product?.name || '',
+            quantity: Number(l.quantity),
+            unit_price_minor: computeLineUnitMinor(l),
+            tax_id: product?.tax_id ? Number(product.tax_id) : null,
+          };
+        }),
       });
       showToast(`Subscription ${created.number} created`, 'success');
       onCreated(created);
@@ -654,6 +668,7 @@ export function NewSubscriptionModal({
               value={paymentTermId}
               onChange={(e) => setPaymentTermId(e.target.value)}
               error={fields.payment_term_id}
+              required
             >
               <option value="">Select payment term…</option>
               {termsList.items.map((pt) => (
@@ -680,7 +695,7 @@ export function NewSubscriptionModal({
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
               error={fields.expiry_date}
-              helpText="Leave blank for open-ended subscription"
+              required
             />
           </div>
 
