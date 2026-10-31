@@ -270,9 +270,11 @@ func (s *Store) Transition(ctx context.Context, subID int64, newStatus string, a
 	if newStatus == "active" && current == "confirmed" {
 		extra = fmt.Sprintf(`, next_billing_date = '%s'::date`, startDate)
 	} else if newStatus == "paused" {
-		extra = `, paused_at = now()`
+		extra = `, paused_at = now(), next_billing_date = NULL`
 	} else if newStatus == "active" && current == "paused" {
-		extra = `, paused_at = NULL`
+		now := time.Now().UTC()
+		next := billing.Next(now, planPeriod, now.Day()).Format("2006-01-02")
+		extra = fmt.Sprintf(`, paused_at = NULL, next_billing_date = '%s'::date`, next)
 	} else if newStatus == "active" && current == "closed" {
 		now := time.Now().UTC()
 		next := billing.Next(now, planPeriod, now.Day()).Format("2006-01-02")
