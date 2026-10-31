@@ -319,8 +319,7 @@ func (s *Store) ListEvents(ctx context.Context, subID int64) ([]Event, error) {
 }
 
 // RunBilling generates invoices for all active subscriptions due on or before today.
-// shortcut: no discount application in billing-run; upgrade when discount-on-invoice is needed.
-func (s *Store) RunBilling(ctx context.Context, actorID int64, today time.Time) (*BillingRunResult, error) {
+func (s *Store) RunBilling(ctx context.Context, actorID int64, today time.Time, dryRun bool) (*BillingRunResult, error) {
 	todayStr := today.Format("2006-01-02")
 	rows, err := s.db.QueryContext(ctx, `
         SELECT s.id, s.customer_id, s.payment_term_id, s.start_date::text,
@@ -352,6 +351,19 @@ func (s *Store) RunBilling(ctx context.Context, actorID int64, today time.Time) 
 
 	res := &BillingRunResult{Errors: []string{}}
 	for _, d := range dues {
+		if dryRun {
+			var exists bool
+			_ = s.db.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM invoices WHERE subscription_id = $1 AND period_start = $2::date)`, d.id, d.nextStr).Scan(&exists)
+			if exists {
+				res.Skipped++
+			} else {
+				res.Created++
+				if d.autoClose && d.expiryStr != "" && d.nextStr >= d.expiryStr {
+					res.Closed++
+				}
+			}
+			continue
+		}
 		if err := s.billOne(ctx, d.id, d.custID, d.termID, actorID,
 			d.startStr, d.nextStr, d.expiryStr, d.periodStr, d.autoClose, todayStr); err != nil {
 			if err.Error() == "already_billed" {

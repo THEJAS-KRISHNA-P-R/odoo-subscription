@@ -304,17 +304,12 @@ func (h *Handler) BillingRun(w http.ResponseWriter, r *http.Request) {
 			asOf = t
 		}
 	}
-	if req.DryRun {
-		// shortcut: dry_run not yet implemented — return zeros; upgrade when needed
-		_ = httpx.JSON(w, http.StatusOK, &BillingRunResult{Errors: []string{}})
-		return
-	}
 	claims, ok := httpx.GetUserFromContext(r.Context())
 	if !ok {
 		httpx.Unauthorized(w, "")
 		return
 	}
-	result, err := h.store.RunBilling(r.Context(), claims.ID, asOf)
+	result, err := h.store.RunBilling(r.Context(), claims.ID, asOf, req.DryRun)
 	if err != nil {
 		httpx.Internal(w, err)
 		return
