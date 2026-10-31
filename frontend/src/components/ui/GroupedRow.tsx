@@ -14,14 +14,22 @@ export function GroupedRow({ onClick, children, className = '', ariaLabel }: Gro
 
   if (onClick) {
     return (
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onClick}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return;
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onClick();
+          }
+        }}
         aria-label={ariaLabel}
         className={`${baseClass} text-left cursor-pointer hover:bg-[var(--bg-surface-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#9FE870] block`}
       >
         {children}
-      </button>
+      </div>
     );
   }
 
