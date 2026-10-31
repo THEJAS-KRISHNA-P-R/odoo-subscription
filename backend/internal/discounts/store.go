@@ -3,6 +3,7 @@ package discounts
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 )
 
@@ -43,8 +44,8 @@ func (s *Store) List(ctx context.Context, cursor int64, limit int) ([]Discount, 
 		SELECT d.id, d.name, d.kind, d.value, d.min_purchase_minor, d.min_quantity,
 		       to_char(d.start_date, 'YYYY-MM-DD'), to_char(d.end_date, 'YYYY-MM-DD'),
 		       d.usage_limit, d.used_count, d.scope, d.is_active,
-		       COALESCE(array_remove(array_agg(DISTINCT dp.product_id), NULL), '{}') AS product_ids,
-		       COALESCE(array_remove(array_agg(DISTINCT ds.subscription_id), NULL), '{}') AS subscription_ids
+		       array_to_json(COALESCE(array_remove(array_agg(DISTINCT dp.product_id), NULL), '{}'))::text AS product_ids,
+		       array_to_json(COALESCE(array_remove(array_agg(DISTINCT ds.subscription_id), NULL), '{}'))::text AS subscription_ids
 		FROM discounts d
 		LEFT JOIN discount_products dp ON d.id = dp.discount_id
 		LEFT JOIN discount_subscriptions ds ON d.id = ds.discount_id
@@ -62,18 +63,24 @@ func (s *Store) List(ctx context.Context, cursor int64, limit int) ([]Discount, 
 	var items []Discount
 	for rows.Next() {
 		var item Discount
-		var pids, sids []int64
+		var pidsRaw, sidsRaw string
 		if err := rows.Scan(
 			&item.ID, &item.Name, &item.Kind, &item.Value,
 			&item.MinPurchaseMinor, &item.MinQuantity,
 			&item.StartDate, &item.EndDate,
 			&item.UsageLimit, &item.UsedCount, &item.Scope, &item.IsActive,
-			&pids, &sids,
+			&pidsRaw, &sidsRaw,
 		); err != nil {
 			return nil, err
 		}
-		item.ProductIDs = pids
-		item.SubscriptionIDs = sids
+		item.ProductIDs, err = parseIDArray(pidsRaw)
+		if err != nil {
+			return nil, fmt.Errorf("parse product ids: %w", err)
+		}
+		item.SubscriptionIDs, err = parseIDArray(sidsRaw)
+		if err != nil {
+			return nil, fmt.Errorf("parse subscription ids: %w", err)
+		}
 		items = append(items, item)
 	}
 	return items, rows.Err()
@@ -84,8 +91,8 @@ func (s *Store) Get(ctx context.Context, id int64) (*Discount, error) {
 		SELECT d.id, d.name, d.kind, d.value, d.min_purchase_minor, d.min_quantity,
 		       to_char(d.start_date, 'YYYY-MM-DD'), to_char(d.end_date, 'YYYY-MM-DD'),
 		       d.usage_limit, d.used_count, d.scope, d.is_active,
-		       COALESCE(array_remove(array_agg(DISTINCT dp.product_id), NULL), '{}') AS product_ids,
-		       COALESCE(array_remove(array_agg(DISTINCT ds.subscription_id), NULL), '{}') AS subscription_ids
+		       array_to_json(COALESCE(array_remove(array_agg(DISTINCT dp.product_id), NULL), '{}'))::text AS product_ids,
+		       array_to_json(COALESCE(array_remove(array_agg(DISTINCT ds.subscription_id), NULL), '{}'))::text AS subscription_ids
 		FROM discounts d
 		LEFT JOIN discount_products dp ON d.id = dp.discount_id
 		LEFT JOIN discount_subscriptions ds ON d.id = ds.discount_id
@@ -93,20 +100,37 @@ func (s *Store) Get(ctx context.Context, id int64) (*Discount, error) {
 		GROUP BY d.id`
 
 	var item Discount
-	var pids, sids []int64
+	var pidsRaw, sidsRaw string
 	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&item.ID, &item.Name, &item.Kind, &item.Value,
 		&item.MinPurchaseMinor, &item.MinQuantity,
 		&item.StartDate, &item.EndDate,
 		&item.UsageLimit, &item.UsedCount, &item.Scope, &item.IsActive,
-		&pids, &sids,
+		&pidsRaw, &sidsRaw,
 	)
 	if err != nil {
 		return nil, err
 	}
-	item.ProductIDs = pids
-	item.SubscriptionIDs = sids
+	item.ProductIDs, err = parseIDArray(pidsRaw)
+	if err != nil {
+		return nil, fmt.Errorf("parse product ids: %w", err)
+	}
+	item.SubscriptionIDs, err = parseIDArray(sidsRaw)
+	if err != nil {
+		return nil, fmt.Errorf("parse subscription ids: %w", err)
+	}
 	return &item, nil
+}
+
+func parseIDArray(raw string) ([]int64, error) {
+	var ids []int64
+	if err := json.Unmarshal([]byte(raw), &ids); err != nil {
+		return nil, err
+	}
+	if ids == nil {
+		return []int64{}, nil
+	}
+	return ids, nil
 }
 
 func (s *Store) Create(ctx context.Context, name, kind string, value, minPurchaseMinor int64, minQuantity int, startDate, endDate string, usageLimit *int, scope string, isActive bool, productIDs, subscriptionIDs []int64) (int64, error) {
