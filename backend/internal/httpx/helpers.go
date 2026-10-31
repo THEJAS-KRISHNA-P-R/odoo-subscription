@@ -420,7 +420,7 @@ func IdempotencyMiddleware(db *sql.DB, next http.HandlerFunc) http.HandlerFunc {
 				`INSERT INTO idempotency_keys (key, user_id, endpoint, status_code, response)
 				 VALUES ($1, $2, $3, $4, $5)
 				 ON CONFLICT (user_id, key) DO NOTHING`,
-				key, claims.ID, r.URL.Path, recorder.statusCode, recorder.body.Bytes(),
+				key, claims.ID, r.URL.Path, recorder.statusCode, []byte(recorder.body.String()),
 			)
 		}
 	}
